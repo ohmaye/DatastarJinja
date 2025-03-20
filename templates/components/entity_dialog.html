@@ -1,0 +1,10 @@
+{% macro entity_dialog(entity_name, title) %}
+<dialog id="{{ entity_name }}-dialog" class="rounded-lg shadow-xl p-0 w-full max-w-md">
+  <div class="p-6">
+    <h2 class="text-xl font-bold mb-4">{{ title }}</h2>
+    <div id="{{ entity_name }}-form-container">
+      <!-- Form will be loaded here dynamically -->
+    </div>
+  </div>
+</dialog>
+{% endmacro %}

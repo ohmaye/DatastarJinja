@@ -1,0 +1,126 @@
+{% macro data_table(items, columns, sort_by, sort_asc, entity_name, filters={}) %}
+<table class="min-w-full divide-y divide-gray-200">
+  <thead class="bg-gray-50">
+    <tr>
+      {% for column in columns %}
+      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        {% if column.sortable %}
+        <span class="cursor-pointer select-none" 
+              data-on-click="${{ entity_name }}SortBy = '{{ column.key }}'; ${{ entity_name }}SortAsc = {{ 'false' if sort_by == column.key and sort_asc else 'true' }}; ${{ entity_name }}sRefresh = true">
+          {{ column.label }}
+          {% if sort_by == column.key %}
+            {% if sort_asc %}
+              <i data-lucide="arrow-up" class="inline-block" width="12" height="12"></i>
+            {% else %}
+              <i data-lucide="arrow-down" class="inline-block" width="12" height="12"></i>
+            {% endif %}
+          {% endif %}
+        </span>
+        {% else %}
+        <span>{{ column.label }}</span>
+        {% endif %}
+      </th>
+      {% endfor %}
+      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Actions
+      </th>
+    </tr>
+    <tr>
+      {% for column in columns %}
+      <th class="px-6 py-2">
+        {% if column.filterable %}
+          {% if column.type == 'boolean' %}
+            <select 
+              class="w-full p-1 border border-gray-300 rounded text-sm"
+              data-action="change:${{ entity_name }}Filters.{{ column.key }} = this.value; ${{ entity_name }}sRefresh = true"
+            >
+              <option value="">All</option>
+              <option value="true" {% if filters and filters.get(column.key) == 'true' %}selected{% endif %}>Yes</option>
+              <option value="false" {% if filters and filters.get(column.key) == 'false' %}selected{% endif %}>No</option>
+            </select>
+          {% elif column.type == 'select' and column.options %}
+            <select 
+              class="w-full p-1 border border-gray-300 rounded text-sm"
+              data-action="change:${{ entity_name }}Filters.{{ column.key }} = this.value; ${{ entity_name }}sRefresh = true"
+            >
+              <option value="">All</option>
+              {% for option in column.options %}
+                <option value="{{ option.value }}" {% if filters and filters.get(column.key) == option.value %}selected{% endif %}>
+                  {{ option.label }}
+                </option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input 
+              type="text" 
+              class="w-full p-1 border border-gray-300 rounded text-sm" 
+              placeholder="Filter {{ column.label|lower }}..."
+              data-action="input:${{ entity_name }}Filters.{{ column.key }} = this.value; ${{ entity_name }}sRefresh = true"
+              value="{{ filters.get(column.key, '') if filters else '' }}"
+            >
+          {% endif %}
+        {% endif %}
+      </th>
+      {% endfor %}
+      <th class="px-6 py-2"></th>
+    </tr>
+  </thead>
+  <tbody class="bg-white divide-y divide-gray-200">
+    {% for item in items %}
+    <tr class="hover:bg-gray-100">
+      {% for column in columns %}
+      <td class="px-6 py-4 whitespace-nowrap">
+        {% if column.type == 'boolean' %}
+          <input type="checkbox" {% if item[column.key] %}checked{% endif %} disabled class="h-4 w-4">
+        {% elif column.type == 'date' %}
+          {{ item[column.key]|datetime }}
+        {% elif column.formatter %}
+          {{ column.formatter(item[column.key]) }}
+        {% else %}
+          {{ item[column.key] }}
+        {% endif %}
+      </td>
+      {% endfor %}
+      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button 
+          class="text-indigo-600 hover:text-indigo-900 mr-2"
+          data-action="get:/school/{{ entity_name }}s/{{ item.id }}"
+          data-swap="{{ entity_name }}-form-container"
+          data-after="${{ entity_name }}_dialog = true">
+          Edit
+        </button>
+        <button 
+          class="text-red-600 hover:text-red-900"
+          data-on-click="if(confirm('Are you sure you want to delete this {{ entity_name }}?')) {
+            fetch('/school/{{ entity_name }}s/{{ item.id }}', {
+              method: 'DELETE',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.text())
+            .then(html => {
+              document.getElementById('message-container').innerHTML = html;
+              ${{ entity_name }}sRefresh = true;
+            });
+          }">
+          Delete
+        </button>
+      </td>
+    </tr>
+    {% endfor %}
+    
+    {% if not items %}
+    <tr>
+      <td colspan="{{ columns|length + 1 }}" class="px-6 py-4 text-center text-sm text-gray-500">
+        No {{ entity_name }}s found
+      </td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+
+<div class="bg-gray-50 px-6 py-3 border-t border-gray-200">
+  <p class="text-sm text-gray-700">
+    Total {{ entity_name }}s: <span class="font-medium">{{ items|length }}</span>
+  </p>
+</div>
+{% endmacro %}

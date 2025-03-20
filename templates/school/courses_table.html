@@ -1,0 +1,33 @@
+{% from "components/data_table.html" import data_table %}
+
+{% set columns = [
+  {
+    'key': 'code',
+    'label': 'Code',
+    'sortable': true,
+    'filterable': true,
+    'type': 'text'
+  },
+  {
+    'key': 'title',
+    'label': 'Title',
+    'sortable': true,
+    'filterable': true,
+    'type': 'text'
+  },
+  {
+    'key': 'active',
+    'label': 'Active',
+    'sortable': true,
+    'filterable': true,
+    'type': 'boolean'
+  }
+] %}
+
+{{ data_table(courses, columns, sort_by, sort_asc, 'course', filters) }}
+
+<div class="bg-gray-50 px-6 py-3 border-t border-gray-200">
+  <p class="text-sm text-gray-700">
+    Total courses: <span class="font-medium">{{ courses|length }}</span>
+  </p>
+</div>

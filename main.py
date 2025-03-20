@@ -48,7 +48,7 @@ class Item(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse(
-        request=request, name="layout.html", context={}
+        request=request, name="base.html", context={}
     )
 
 

@@ -1,0 +1,18 @@
+<html>
+<head>
+    <title>Item Details</title>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.9/bundles/datastar.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <link href="{{ url_for('static', path='/output.css') }}" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <h1 class="bg-green-300">IS THIS GREEN?</h1>
+        <div class="bg-indigo-300">BLUEEEEEEEE</div>
+        <h1 class="text-2xl font-bold mb-4"><a href="{{ url_for('read_item', id=id) }}" class="text-blue-600 hover:text-blue-800">Item ID: {{ id }}</a></h1>
+        <button id="hello" data-on-click="@get('/updates')" class="btn btn-primary">Hello</button>
+    </div>
+</body>
+</html>

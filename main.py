@@ -8,9 +8,10 @@ from fastapi.templating import Jinja2Templates
 from datastar_py.responses import DatastarFastAPIResponse
 import asyncio
 import datetime
-
+from src.utils import is_datastar
 from fastapi_tailwind import tailwind
 from contextlib import asynccontextmanager
+from menu_data import MENU_DATA
 
 static_files = StaticFiles(directory = "static")
 
@@ -35,15 +36,20 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Add global context data to all templates
+templates.env.globals["menu_data"] = MENU_DATA
+
 class Item(BaseModel):
     name: str
     price: float
     is_offer: Union[bool, None] = None
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello World"}
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="layout.html", context={}
+    )
 
 
 @app.get("/items/{id}", response_class=HTMLResponse)
@@ -58,7 +64,8 @@ def read_item(item_id: int, id:str):
 
 
 @app.get("/updates")
-async def updates():
+async def updates(request: Request):
+    print("IS DATASTAR", is_datastar(request))
     async def tst(sse):
         yield sse.merge_fragments(["""<div id="hello">DID IT</div>"""])
 

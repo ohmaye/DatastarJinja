@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EF Tokyo{% endblock %}</title>
+    <!-- Include your CSS here -->
+    <link href="{{ url_for('static', path='/output.css') }}" rel="stylesheet">
+    <script defer src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .section-title {
+            color: #9ca3af;
+            padding: 0.75rem 1rem;
+            font-weight: 500;
+        }
+        .menu-section {
+            margin-bottom: 0.5rem;
+        }
+        .menu-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem 0.5rem 2rem;
+        }
+        .menu-item i, .nav-icon {
+            color: #6c2bd9;
+            margin-right: 0.75rem;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+
+{% macro menu_item(icon, text, url, target='') %}
+    <a href="{{ url }}" {% if target %}target="{{ target }}"{% endif %} class="menu-item">
+        <i data-lucide="{{ icon }}" class="nav-icon" width="20" height="20"></i>
+        <span>{{ text }}</span>
+    </a>
+{% endmacro %}
+
+{% macro menu_section(title, menu_var, menu_items) %}
+    <div class="menu-section">
+        <div class="section-title flex justify-between items-center">
+            {{ title }}
+            <i data-lucide="chevron-down" class="text-indigo-500" width="20" height="20"
+               data-on-click="${{ menu_var }} = !${{ menu_var }}"></i>
+        </div>
+        <div data-show="${{ menu_var }}">
+            {% for item in menu_items %}
+                {{ menu_item(item.icon, item.text, item.url, item.target|default('')) }}
+            {% endfor %}
+        </div>
+    </div>
+{% endmacro %}
+
+<body>
+    <div class="bg-white min-h-screen">
+        <div class="navbar bg-base-100 shadow-sm px-4">
+            <img src="{{ url_for('static', path='/EF Logo.png') }}" class="w-12 h-12">
+            <a href="/" class="btn btn-ghost text-xl text-indigo-400">Tokyo</a>
+            <button data-on-click="$nav_open = !$nav_open" class="ml-auto">
+                <i data-lucide="menu" class="text-indigo-500" width="24" height="24"></i>
+            </button>
+        </div>
+        
+        <div class="flex">
+            <nav data-signals="{nav_open: true, school_menu: true, survey_menu: true, spin_menu: true, student_menu: true, teacher_menu: true, dev_menu: true}" 
+                 class="bg-white shadow-md w-64 min-h-screen">
+                
+                <!-- EF Tokyo Section -->
+                <div class="section-title">EF Tokyo</div>
+                {{ menu_item('home', 'Home', '/') }}
+                
+                <!-- Menu Sections -->
+                {% for section in menu_data %}
+                    {{ menu_section(section.title, section.menu_var, section.menu_items) }}
+                {% endfor %}
+            </nav>
+            
+            <div id="main" class="flex-1 p-4">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

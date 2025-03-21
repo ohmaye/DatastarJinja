@@ -101,17 +101,16 @@
         sseStatus.textContent = 'Connection error. Retrying...';
       };
       
-      // Listen for course updates
-      evtSource.addEventListener('courses_update', function(event) {
-        const data = JSON.parse(event.data);
-        // Trigger a refresh of the courses table when we get an update
-        document.querySelector('[data-signals]').dispatchEvent(
-          new CustomEvent('signal:update', {
-            detail: { key: 'coursesRefresh', value: true }
-          })
-        );
-        sseStatus.textContent = `Connected: Last update at ${new Date().toLocaleTimeString()}`;
-      });
+      // With DatastarFastAPIResponse, updates are handled automatically
+      // The server sends HTML fragments with data-signal-update attributes
+      // which DataStar processes automatically
+      
+      // Just track connection status
+      window.setInterval(() => {
+        if (evtSource.readyState === 1) { // OPEN
+          sseStatus.textContent = `Connected: Last check at ${new Date().toLocaleTimeString()}`;
+        }
+      }, 30000); // Update status every 30 seconds
     }
   });
 </script>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}EF Tokyo{% endblock %}</title>
+    <link href="{{ url_for('static', path='/output.css') }}" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.9/bundles/datastar.js"
+    ></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
+    {% block head %}{% endblock %}
+  </head>
+
+  <body class="bg-white">
+    <!-- Full-width top bar -->
+    <header class="w-full bg-white shadow-sm">
+      <div class="container px-0">
+        <div class="flex items-center">
+          <!-- Logo and Title - Left aligned in first 64 width -->
+          <div class="flex items-center w-64 p-2 justify-between">
+            <img src="{{ url_for('static', path='/EF Logo.png') }}" class="w-10 h-10" />
+            <h1 class="text-xl text-indigo-400 ml-2">Tokyo</h1>
+            <button data-on-click="$nav_open = !$nav_open" class="ml-24">
+              <i data-lucide="menu" class="text-indigo-500" width="24" height="24"></i>
+            </button>
+          </div>
+
+          <!-- Tab Navigation - Starting exactly at right edge of nav panel -->
+          <div class="flex-1">{% include "layout/choice_selector.html" %}</div>
+
+          <!-- Action Buttons -->
+          <div class="p-4">{% block header_actions %}{% endblock %}</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex flex-row">
+      <!-- Left Navigation Sidebar -->
+      <div data-show="$nav_open" class="shadow-lg w-64 shrink-0">{% include "layout/navigation.html" %}</div>
+
+      <!-- Main Content -->
+      <div class="flex-1 p-4">
+        <button class="btn btn-primary w-auto" data-on-click="@get('/something')">Load Something</button>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        lucide.createIcons();
+      });
+    </script>
+  </body>
+</html>

@@ -89,6 +89,7 @@ class TableConfig(BaseModel):
         sort_asc: Optional[bool] = None,
         templates: Any = None,
         response_adapter: Optional[Callable] = None,
+        url: Optional[str] = None,
     ):
         """Render the table with the specified items and options"""
         # Import here to avoid circular imports
@@ -107,9 +108,18 @@ class TableConfig(BaseModel):
             sort_asc=sort_asc if sort_asc is not None else self.default_sort_asc,
         )
 
+        # Determine URL based on input or defaults
+        if url is None:
+            # If no URL is provided, construct one from the entity name
+            url = f"/school/{self.entity_name}s/data"
+
         # Return rendered response
         return adapter(
-            request=request, template_name=self.table_template, context=context, templates=templates
+            request=request,
+            template_name=self.table_template,
+            context=context,
+            templates=templates,
+            url=url,
         )
 
 

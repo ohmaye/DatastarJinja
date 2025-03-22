@@ -19,7 +19,11 @@ def read_root(request: Request):
 @app.get("/something")
 def something(request: Request):
     def tst(sse):
-        yield sse.merge_fragments(["""<div id="hello">DID IT</div>"""])
+        yield sse.merge_fragments(
+            [
+                """<div id="hello" data-replace-url="'/school/courses'" class="bg-red-500">DID IT</div>"""
+            ]
+        )
 
     return DatastarFastAPIResponse(tst)
 

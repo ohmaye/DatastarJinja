@@ -67,7 +67,14 @@ def prepare_table_context(
     }
 
 
-def response_adapter(request: Request, template_name: str, context: dict = None, templates=None):
+def response_adapter(
+    request: Request,
+    template_name: str,
+    context: dict = None,
+    templates=None,
+    url=None,
+    status_code: int = 200,
+):
     """
     Returns either a full HTML response or a Datastar fragment based on the request.
 
@@ -76,6 +83,8 @@ def response_adapter(request: Request, template_name: str, context: dict = None,
         template_name: The name of the template to render
         context: The context to pass to the template
         templates: The Jinja2Templates instance
+        url: The URL to set for client-side navigation
+        status_code: The HTTP status code to return
 
     Returns:
         Either a standard TemplateResponse or a DatastarFastAPIResponse
@@ -103,14 +112,25 @@ def response_adapter(request: Request, template_name: str, context: dict = None,
 
         # Create an optimized async generator function
         async def fragment_generator(sse):
-            # Just yield the pre-rendered content
-            yield sse.merge_fragments([html_content])
+            # Use the provided URL or None if not specified
+            if url:
+                # Create a wrapper div with the data-replace-url attribute if URL is provided
+                # Send the HTML with URL replacement as a single fragment
+                yield sse.merge_fragments(
+                    [f"""<div id="content" data-replace-url="'{url}'">""", html_content, "</div>"]
+                )
+            else:
+                # Just yield the content without URL replacement
+                yield sse.merge_fragments([html_content])
 
         return DatastarFastAPIResponse(fragment_generator)
     else:
         # Otherwise return a full page
         context["standalone"] = False
-        return templates.TemplateResponse(name=template_name, context=context)
+        print("RENDERING FULL PAGE")
+        return templates.TemplateResponse(
+            name=template_name, context=context, status_code=status_code
+        )
 
 
 def render_html(request: Request, template: str, context: dict = None) -> str:

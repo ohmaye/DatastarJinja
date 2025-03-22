@@ -1,22 +1,18 @@
 import uuid
-import asyncio
-from typing import Dict, Any, List, Set, Optional, Callable, Generator, AsyncGenerator
-from fastapi import APIRouter, Request, Response, HTTPException, Query, Path, Body, Form, Depends
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from dataclasses import dataclass, asdict, field
+import os
+from typing import Dict, Any, List, Optional
+from fastapi import APIRouter, Request, HTTPException, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from dataclasses import asdict
 
 from src.db import db_school
-from src.utils import prepare_table_context, response_adapter, is_datastar
+from src.utils import prepare_table_context, response_adapter
 from src.school.table_models import get_courses_table_config
 from src.school.models import Course
 
 # Create router for school module
 router = APIRouter(prefix="/school", tags=["school"])
-
-# Jinja2 templates
-from fastapi.templating import Jinja2Templates
-import os
 
 # Get the templates directory path
 templates_dir = os.path.join(
@@ -95,7 +91,7 @@ def sort_courses(
 
 
 # Success and error messages
-def create_success_message(sse=None) -> str:
+def create_success_message() -> str:
     """Create a success message HTML snippet"""
     return """
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -105,7 +101,7 @@ def create_success_message(sse=None) -> str:
     """
 
 
-def create_error_message(sse=None, error_msg: str = "") -> str:
+def create_error_message(error_msg: str = "") -> str:
     """Create an error message HTML snippet"""
     return f"""
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -143,6 +139,7 @@ async def get_courses_page(request: Request):
         template_name="components/entity_page.html",
         context=context,
         templates=templates,
+        url="/school/courses",
     )
 
 
@@ -152,9 +149,10 @@ async def get_new_course_form(request: Request):
     # Return empty form for creating a new course
     return response_adapter(
         request=request,
-        template_name="components/course_form.html",
+        template_name="school/course_form.html",
         context={"course": None},
         templates=templates,
+        url="/school/courses/new",
     )
 
 
@@ -191,6 +189,23 @@ async def get_courses_data(
     # Get the table configuration
     table_config = get_courses_table_config()
 
+    # Construct URL with query parameters if they exist
+    url_parts = ["/school/courses/data"]
+    query_params = []
+
+    if q:
+        query_params.append(f"q={q}")
+    if active_only:
+        query_params.append("active_only=true")
+    if sort_by:
+        query_params.append(f"sort_by={sort_by}")
+        query_params.append(f"sort_asc={'true' if sort_asc else 'false'}")
+
+    if query_params:
+        url = f"{url_parts[0]}?{'&'.join(query_params)}"
+    else:
+        url = url_parts[0]
+
     # Use the table_config's render method for simplified rendering
     return table_config.render(
         request=request,
@@ -199,6 +214,7 @@ async def get_courses_data(
         sort_by=sort_by,
         sort_asc=sort_asc,
         templates=templates,
+        url=url,
     )
 
 
@@ -213,16 +229,23 @@ async def get_course(request: Request, course_id: str):
         course = Course(**course_data.iloc[0].to_dict())
         course_dict = asdict(course)
 
-        return templates.TemplateResponse(
-            request=request, name="school/course_form.html", context={"course": course_dict}
+        return response_adapter(
+            request=request,
+            template_name="school/course_form.html",
+            context={"course": course_dict},
+            templates=templates,
+            url=f"/school/courses/{course_id}",
         )
     except Exception as e:
-        error_msg = str(e)
+        error_html = create_error_message(str(e))
 
-        async def error_response(sse):
-            yield create_error_message(sse, error_msg)
-
-        return HTMLResponse(content=error_msg)
+        return response_adapter(
+            request=request,
+            template_name="error_message.html",
+            context={"message_html": error_html},
+            templates=templates,
+            status_code=400,
+        )
 
 
 @router.post("/courses", response_class=HTMLResponse)
@@ -242,7 +265,7 @@ async def create_course(
         db_school.create("course", new_course)
 
         # Generate success message
-        success_html = create_success_message(None)
+        success_html = create_success_message()
 
         # Return the success message
         return response_adapter(
@@ -250,10 +273,11 @@ async def create_course(
             template_name="success_message.html",
             context={"message_html": success_html},
             templates=templates,
+            url="/school/courses",
         )
     except Exception as e:
         # Generate error message
-        error_html = create_error_message(None, str(e))
+        error_html = create_error_message(str(e))
 
         # Return the error message
         return response_adapter(
@@ -280,7 +304,7 @@ async def update_course(
         db_school.update("course", update_data)
 
         # Generate success message
-        success_html = create_success_message(None)
+        success_html = create_success_message()
 
         # Return the success message
         return response_adapter(
@@ -288,10 +312,11 @@ async def update_course(
             template_name="success_message.html",
             context={"message_html": success_html},
             templates=templates,
+            url="/school/courses",
         )
     except Exception as e:
         # Generate error message
-        error_html = create_error_message(None, str(e))
+        error_html = create_error_message(str(e))
 
         # Return the error message
         return response_adapter(
@@ -311,7 +336,7 @@ async def delete_course(request: Request, course_id: str):
         db_school.delete("course", course_id)
 
         # Generate success message
-        success_html = create_success_message(None)
+        success_html = create_success_message()
 
         # Return the success message
         return response_adapter(
@@ -319,10 +344,11 @@ async def delete_course(request: Request, course_id: str):
             template_name="success_message.html",
             context={"message_html": success_html},
             templates=templates,
+            url="/school/courses",
         )
     except Exception as e:
         # Generate error message
-        error_html = create_error_message(None, str(e))
+        error_html = create_error_message(str(e))
 
         # Return the error message
         return response_adapter(

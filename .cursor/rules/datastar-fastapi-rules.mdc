@@ -1,0 +1,45 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+DatastarJinja Project Rules
+1. Architecture & Organization
+Rule 1.1: Use domain-driven folder structure with resources grouped by business domain rather than technical function.
+Rule 1.2: Maintain separation between API layer, business logic, and data access.
+Rule 1.3: Move all HTMX-specific code to Datastar client or server side or remove entirely in favor of Datastar components.
+Rule 1.4: Keep Jinja2 templates in a dedicated /templates directory organized by domain. Use daisyui as much as possible and tailwindcss when necessary. Avoid css styles aside from daisyui and tailwindcss.
+Rule 1.5: Use Pydantic models for all data validation, serialization, and documentation.
+2. API Design
+Rule 2.1: Use FastAPI router organization with domain-specific routers in separate files.
+Rule 2.2: Design routes that can send HTMLResponses in text/html or text/event-stream format using DatastarFastAPIResponse
+Rule 2.3: Every endpoint must have proper response models defined with Pydantic.
+Rule 2.4: For templated responses, use TemplateResponse with consistent context variables.
+Rule 2.5: Use Datastar's SSE capabilities instead of HTMX for real-time updates.
+3. Frontend Implementation
+Rule 3.1: Replace all HTMX attributes with Datastar's data attributes.
+Rule 3.2: Use Datastar's signal system for state management.
+Rule 3.3: Design reusable components with clear documentation.
+Rule 3.4: Follow a consistent naming convention for all template files.
+Rule 3.5: Minimize JavaScript usage - prefer Datastar's declarative approach.
+4. Database Interaction
+Rule 4.1: Use a consistent pattern for DuckDB operations and error handling.
+Rule 4.2: Encapsulate all database queries in dedicated functions.
+Rule 4.3: Implement proper connection pooling for DuckDB.
+Rule 4.4: Use Pydantic models for data validation before database operations.
+Rule 4.5: Implement consistent error handling for database operations.
+5. Package Management & Dependencies
+Rule 5.1: Use UV for all package management operations.
+Rule 5.2: Maintain a pyproject.toml for production dependencies.
+Rule 5.3: Separate dev dependencies.
+Rule 5.4: Pin all dependency versions for reproducible builds.
+Rule 5.5: Regularly audit and update dependencies for security.
+6. Deployment
+Rule 6.1: Use the existing docker file for deployment to fly.io.
+Rule 6.4: Ensure static assets are properly served.
+Rule 6.5: Implement proper environment variable management.
+7. Performance & Optimization
+Rule 7.1: Use async operations where appropriate for I/O-bound operations.
+Rule 7.3: Optimize static asset delivery and minimize CSS/JS payload.
+Rule 7.4: Use efficient DuckDB query patterns.
+Rule 7.5: Implement pagination for all list endpoints.

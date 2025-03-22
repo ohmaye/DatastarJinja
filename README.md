@@ -5,17 +5,13 @@ A FastAPI application with Jinja2 templates and Tailwind CSS.
 ## Setup
 
 1. Install Python dependencies:
+
 ```bash
 # If using pip
 pip install -r requirements.txt
 
 # If using uv
 uv pip install -r requirements.txt
-```
-
-2. Install Node.js dependencies:
-```bash
-npm install
 ```
 
 ## Tailwind CSS
@@ -30,9 +26,7 @@ When adding Tailwind classes to your HTML templates, the CSS file will automatic
 ## Running the Application
 
 ```bash
-uvicorn main:app --reload
+uv run fastapi dev main.py
 ```
 
 Navigate to http://localhost:8000/items/1 to see the application in action.
-
-

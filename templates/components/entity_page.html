@@ -1,0 +1,63 @@
+{% if not standalone %}
+{% extends "layout/index.html" %}
+{% endif %}
+{% from "components/entity_dialog.html" import entity_dialog %}
+
+{% block content %}
+<div id="content" class="container mx-auto" 
+     data-signals='{
+       "{{ entity_name }}SortBy": "{{ sort_by or '' }}", 
+       "{{ entity_name }}SortAsc": {{ sort_asc|string|lower }}, 
+       "{{ entity_name }}Filters": {}, 
+       "{{ entity_name }}sRefresh": false, 
+       "{{ entity_name }}_dialog": false,
+       "sseStatus": "Connecting to server for real-time updates..."
+     }' 
+     data-table-config='{{ table_config|tojson }}'
+     data-sse="/school/{{ entity_name }}s/stream"
+     data-sse-open="${$sseStatus = 'Connected for real-time updates'}"
+     data-sse-error="${$sseStatus = 'Connection error. Retrying...'}"
+     data-timer-1="30000:$sseStatus = `Connected: Last check at ${new Date().toLocaleTimeString()}`">
+  <div id="message-container"></div>
+  
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">{{ entity_title }}</h1>
+    <button 
+      class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+      data-action="get:/school/{{ entity_name }}s/new"
+      data-swap="{{ entity_name }}-form-container"
+      data-after="${{ entity_name }}_dialog = true">
+      Create New {{ entity_title_singular }}
+    </button>
+  </div>
+
+  <!-- Entity Dialog -->
+  <dialog id="{{ entity_name }}-dialog" 
+          class="rounded-lg shadow-xl p-0 w-full max-w-md" 
+          data-ref="{{ entity_name }}_dialog">
+    <div class="p-6">
+      <h2 class="text-xl font-bold mb-4">{{ entity_title_singular }} Details</h2>
+      <div id="{{ entity_name }}-form-container">
+        <!-- Form content will be loaded dynamically -->
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Entity Table -->
+  <div id="{{ entity_name }}s-table" class="bg-white shadow-md rounded-lg overflow-hidden"
+       data-action="${{ entity_name }}sRefresh:get:/school/{{ entity_name }}s/data?sort_by=${${{ entity_name }}SortBy}&sort_asc=${${{ entity_name }}SortAsc}
+       {%- for column in table_config.columns %}
+       {%- if column.filterable %}
+       &filter_{{ column.key }}=${${{ entity_name }}Filters.{{ column.key }} || ''}
+       {%- endif %}
+       {%- endfor %}">
+    <!-- Table content will be loaded here -->
+    {% if include_table %}
+      {% include table_template %}
+    {% endif %}
+  </div>
+
+  <!-- SSE Connection Status - Using Datastar's signals -->
+  <div class="mt-4 text-sm text-gray-500" data-text="$sseStatus"></div>
+</div>
+{% endblock %}

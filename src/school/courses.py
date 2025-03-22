@@ -70,9 +70,7 @@ def render_row(course):
         ),
         Td(course.code),
         Td(course.title),
-        Td(
-            Input(type="checkbox", checked=course.active, disabled=True, cls="checkbox")
-        ),
+        Td(Input(type="checkbox", checked=course.active, disabled=True, cls="checkbox")),
         Td(
             Button(
                 "Delete",
@@ -141,9 +139,7 @@ def course_table(courses):
 def get(req, sort_by: str = None, filter_by: str = None):
     db_courses = db_school.get_all("course")
     if filter_by is not None:
-        db_courses = db_courses[
-            db_courses["code"].str.contains(filter_by, case=False, na=False)
-        ]
+        db_courses = db_courses[db_courses["code"].str.contains(filter_by, case=False, na=False)]
     if sort_by is not None:
         db_courses = db_courses.sort_values(sort_by.strip('"'))
     courses = [Course(**course.to_dict()) for _, course in db_courses.iterrows()]

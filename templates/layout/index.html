@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-theme="light">
+<html id="main_page" data-theme="light" data-signals="{nav_open: true}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -40,11 +40,16 @@
 
     <div class="flex flex-row">
       <!-- Left Navigation Sidebar -->
-      <div data-show="$nav_open" class="shadow-lg w-64 shrink-0">{% include "layout/navigation.html" %}</div>
+      <div data-show="$nav_open" class="shadow-lg w-64 shrink-0">
+        {% include "layout/navigation.html" with context%}
+      </div>
 
       <!-- Main Content -->
-      <div class="flex-1 p-4">
+      <div id="content" class="flex-1 p-4">
+        {% block content %}
         <button class="btn btn-primary w-auto" data-on-click="@get('/something')">Load Something</button>
+        <div id="hello">?</div>
+        {% endblock %}
       </div>
     </div>
 

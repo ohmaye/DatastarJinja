@@ -1,15 +1,15 @@
 import uuid
 import os
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Request, HTTPException, Form
+from fastapi import APIRouter, Request, HTTPException, Form, Depends, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from dataclasses import asdict
 
 from src.db import db_school
 from src.utils import prepare_table_context, response_adapter
 from src.school.table_models import get_courses_table_config
 from src.school.models import Course
+from pydantic import BaseModel, Field, ValidationError
 
 # Create router for school module
 router = APIRouter(prefix="/school", tags=["school"])
@@ -111,6 +111,15 @@ def create_error_message(error_msg: str = "") -> str:
     """
 
 
+# Define a Pydantic model for course creation and update
+class CourseCreate(BaseModel):
+    """Schema for course creation"""
+
+    code: str = Field(..., description="The course code")
+    title: str = Field(..., description="The course title")
+    active: bool = Field(False, description="Whether the course is active")
+
+
 # Routes
 @router.get("/courses", response_class=HTMLResponse)
 async def get_courses_page(request: Request):
@@ -118,20 +127,22 @@ async def get_courses_page(request: Request):
     # Get all courses from the database
     db_courses = db_school.get_all("course")
 
-    # Convert DataFrame rows to dictionaries
-    courses_dict = []
+    # Convert DataFrame rows to Course models
+    courses = []
     for index, row in db_courses.iterrows():
         course_dict = row.to_dict()
         # Ensure ID is a string
         if "id" in course_dict:
             course_dict["id"] = str(course_dict["id"])
-        courses_dict.append(course_dict)
+        # Create a Course model and convert to dict for template rendering
+        course = Course.from_db_row(course_dict)
+        courses.append(course.to_response_dict())
 
     # Use the Pydantic model for table configuration
     table_config = get_courses_table_config()
 
     # Use the entity_page.html template directly
-    context = prepare_table_context(request=request, table_config=table_config, items=courses_dict)
+    context = prepare_table_context(request=request, table_config=table_config, items=courses)
 
     # The entity_page template is different from the table template
     return response_adapter(
@@ -146,11 +157,15 @@ async def get_courses_page(request: Request):
 @router.get("/courses/new", response_class=HTMLResponse)
 async def get_new_course_form(request: Request):
     """Return the empty course form"""
+    # For the form, we just need an empty dict, not a validated Course model
+    # This avoids validation errors for the empty form
+    empty_course = {"id": "", "code": "", "title": "", "active": False}
+
     # Return empty form for creating a new course
     return response_adapter(
         request=request,
         template_name="school/course_form.html",
-        context={"course": None},
+        context={"course": empty_course},
         templates=templates,
         url="/school/courses/new",
     )
@@ -159,23 +174,25 @@ async def get_new_course_form(request: Request):
 @router.get("/courses/data", response_class=HTMLResponse)
 async def get_courses_data(
     request: Request,
-    q: Optional[str] = None,
-    active_only: Optional[bool] = False,
-    sort_by: Optional[str] = None,
-    sort_asc: Optional[bool] = True,
+    q: Optional[str] = Query(None, description="Search query for filtering courses"),
+    active_only: Optional[bool] = Query(False, description="Filter to show only active courses"),
+    sort_by: Optional[str] = Query(None, description="Field to sort by"),
+    sort_asc: Optional[bool] = Query(True, description="Sort in ascending order"),
 ):
     """Get filtered and sorted courses for the table"""
     # Filter and sort the courses based on the request parameters
     db_courses = db_school.get_all("course")
 
-    # Convert DataFrame rows to dictionaries
+    # Convert DataFrame rows to Course models
     courses = []
     for index, row in db_courses.iterrows():
         course_dict = row.to_dict()
         # Ensure ID is a string
         if "id" in course_dict:
             course_dict["id"] = str(course_dict["id"])
-        courses.append(course_dict)
+        # Create a Course model and convert to dict
+        course = Course.from_db_row(course_dict)
+        courses.append(course.to_response_dict())
 
     # Apply filters if provided
     filters = parse_filter_params(q=q, active_only=active_only)
@@ -226,19 +243,29 @@ async def get_course(request: Request, course_id: str):
         if course_data.empty:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        course = Course(**course_data.iloc[0].to_dict())
-        course_dict = asdict(course)
+        # Create a Course Pydantic model from the database data
+        # This will validate the data as it's loaded
+        course = Course.from_db_row(course_data.iloc[0].to_dict())
 
         return response_adapter(
             request=request,
             template_name="school/course_form.html",
-            context={"course": course_dict},
+            context={"course": course.to_response_dict()},
             templates=templates,
             url=f"/school/courses/{course_id}",
         )
+    except ValueError as validation_error:
+        # This would catch Pydantic validation errors specifically
+        error_html = create_error_message(f"Data validation error: {str(validation_error)}")
+        return response_adapter(
+            request=request,
+            template_name="error_message.html",
+            context={"message_html": error_html},
+            templates=templates,
+            status_code=400,
+        )
     except Exception as e:
         error_html = create_error_message(str(e))
-
         return response_adapter(
             request=request,
             template_name="error_message.html",
@@ -251,18 +278,24 @@ async def get_course(request: Request, course_id: str):
 @router.post("/courses", response_class=HTMLResponse)
 async def create_course(
     request: Request,
-    code: str = Form(...),
-    title: str = Form(...),
-    active: bool = Form(False),
+    form_data: CourseCreate = Depends(
+        lambda request: CourseCreate(
+            code=request.form.get("code"),
+            title=request.form.get("title"),
+            active=request.form.get("active") == "true" or request.form.get("active") == "on",
+        )
+    ),
 ):
-    """Create a new course"""
+    """Create a new course with Pydantic validation"""
     try:
         # Create a new course ID
         course_id = str(uuid.uuid4())
 
-        # Save the course to the database
-        new_course = {"id": course_id, "code": code, "title": title, "active": active}
-        db_school.create("course", new_course)
+        # Create a validated Course model instance
+        new_course = Course(id=course_id, **form_data.dict())
+
+        # Save the course to the database using the model's serialization method
+        db_school.create("course", new_course.to_db_dict())
 
         # Generate success message
         success_html = create_success_message()
@@ -274,6 +307,16 @@ async def create_course(
             context={"message_html": success_html},
             templates=templates,
             url="/school/courses",
+        )
+    except ValidationError as ve:
+        # Handle Pydantic validation errors specifically
+        error_html = create_error_message(f"Validation error: {str(ve)}")
+        return response_adapter(
+            request=request,
+            template_name="error_message.html",
+            context={"message_html": error_html},
+            templates=templates,
+            status_code=400,
         )
     except Exception as e:
         # Generate error message
@@ -293,15 +336,26 @@ async def create_course(
 async def update_course(
     request: Request,
     course_id: str,
-    code: str = Form(...),
-    title: str = Form(...),
-    active: bool = Form(False),
+    form_data: CourseCreate = Depends(
+        lambda request: CourseCreate(
+            code=request.form.get("code"),
+            title=request.form.get("title"),
+            active=request.form.get("active") == "true" or request.form.get("active") == "on",
+        )
+    ),
 ):
-    """Update an existing course"""
+    """Update an existing course with Pydantic validation"""
     try:
-        # Update the course in the database
-        update_data = {"id": course_id, "code": code, "title": title, "active": active}
-        db_school.update("course", update_data)
+        # Verify the course exists before updating
+        existing_course = db_school.get("course", course_id)
+        if existing_course.empty:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        # Create a validated Course model instance for the update
+        updated_course = Course(id=course_id, **form_data.dict())
+
+        # Update the course in the database using the model's serialization method
+        db_school.update("course", updated_course.to_db_dict())
 
         # Generate success message
         success_html = create_success_message()
@@ -313,6 +367,26 @@ async def update_course(
             context={"message_html": success_html},
             templates=templates,
             url="/school/courses",
+        )
+    except ValidationError as ve:
+        # Handle Pydantic validation errors specifically
+        error_html = create_error_message(f"Validation error: {str(ve)}")
+        return response_adapter(
+            request=request,
+            template_name="error_message.html",
+            context={"message_html": error_html},
+            templates=templates,
+            status_code=400,
+        )
+    except HTTPException as he:
+        # Pass through HTTP exceptions
+        error_html = create_error_message(he.detail)
+        return response_adapter(
+            request=request,
+            template_name="error_message.html",
+            context={"message_html": error_html},
+            templates=templates,
+            status_code=he.status_code,
         )
     except Exception as e:
         # Generate error message

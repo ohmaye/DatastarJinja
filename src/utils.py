@@ -5,7 +5,11 @@ Utility functions for the application
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TypeVar, Union, Type
+from pydantic import BaseModel
+
+# Type variable for Pydantic models
+T = TypeVar("T", bound=BaseModel)
 
 
 def is_datastar(req):
@@ -24,7 +28,7 @@ def is_datastar(req):
 def prepare_table_context(
     request: Request,
     table_config,
-    items: List[Dict[str, Any]] = None,
+    items: List[Union[Dict[str, Any], BaseModel]] = None,
     filters: Dict[str, str] = None,
     sort_by: Optional[str] = None,
     sort_asc: Optional[bool] = None,
@@ -35,7 +39,7 @@ def prepare_table_context(
     Args:
         request: The request object
         table_config: The TableConfig Pydantic model instance
-        items: List of items to display in the table
+        items: List of items to display in the table, can be dicts or Pydantic models
         filters: Any active filters
         sort_by: Field to sort by
         sort_asc: Sort direction (True for ascending)
@@ -49,6 +53,14 @@ def prepare_table_context(
     items = items or []
     filters = filters or {}
 
+    # Convert any Pydantic models in the items list to dictionaries
+    processed_items = []
+    for item in items:
+        if isinstance(item, BaseModel):
+            processed_items.append(item.dict())
+        else:
+            processed_items.append(item)
+
     # Build the context with table_config as the central source of truth
     return {
         "request": request,
@@ -58,13 +70,29 @@ def prepare_table_context(
         "entity_title_singular": table_config.entity_title_singular,
         "table_config": table_config.dict(),
         "table_template": table_config.table_template,
-        "items": items,  # Generic name for table items
-        f"{table_config.entity_name}s": items,  # Also include with specific name (e.g. "courses")
+        "items": processed_items,  # Generic name for table items
+        f"{table_config.entity_name}s": processed_items,  # Also include with specific name (e.g. "courses")
         "filters": filters,
         "sort_by": sort_by,
         "sort_asc": sort_asc,
         "include_table": True,
     }
+
+
+def pydantic_to_context(model_instance: Optional[BaseModel]) -> Dict[str, Any]:
+    """
+    Convert a Pydantic model to a dictionary for use in a template context.
+    Returns None if model_instance is None.
+
+    Args:
+        model_instance: The Pydantic model instance to convert
+
+    Returns:
+        Dictionary representation of the model, or None
+    """
+    if model_instance is None:
+        return None
+    return model_instance.dict()
 
 
 def response_adapter(
@@ -77,17 +105,6 @@ def response_adapter(
 ):
     """
     Returns either a full HTML response or a Datastar fragment based on the request.
-
-    Args:
-        request: The request object
-        template_name: The name of the template to render
-        context: The context to pass to the template
-        templates: The Jinja2Templates instance
-        url: The URL to set for client-side navigation
-        status_code: The HTTP status code to return
-
-    Returns:
-        Either a standard TemplateResponse or a DatastarFastAPIResponse
     """
     # We can't import templates directly due to circular imports
     if templates is None:
@@ -146,16 +163,3 @@ def render_html(request: Request, template: str, context: dict = None) -> str:
         context["standalone"] = False
 
     return template
-
-
-# Add custom Jinja2 filters
-def format_datetime(value):
-    if isinstance(value, str):
-        try:
-            dt = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return value
-        return dt.strftime("%Y-%m-%d %H:%M")
-    elif isinstance(value, datetime.datetime):
-        return value.strftime("%Y-%m-%d %H:%M")
-    return value

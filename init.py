@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from src.utils import format_datetime, is_datastar
+from src.utils import is_datastar
 from fastapi_tailwind import tailwind
 from contextlib import asynccontextmanager
 from templates.layout.menu_data import NAV_DATA
@@ -38,10 +38,6 @@ app.mount("/static", static_files, name="static")
 
 # Add global context data to all templates
 templates.env.globals["menu_data"] = NAV_DATA
-
-
-# EO Not sure if this is needed
-templates.env.filters["datetime"] = format_datetime
 
 
 # Add CORS middleware
